@@ -37,10 +37,9 @@ extern "C" {
 #endif
 
 struct mp_media;
-typedef struct mp_media mp_media_t;
 
 struct mp_decode {
-	mp_media_t            *m;
+	struct mp_media       *m;
 	AVStream              *stream;
 	bool                  audio;
 
@@ -61,7 +60,8 @@ struct mp_decode {
 	struct circlebuf      packets;
 };
 
-extern bool mp_decode_init(mp_media_t *media, enum AVMediaType type, bool hw);
+extern bool mp_decode_init(struct mp_media *media, enum AVMediaType type,
+		bool hw);
 extern void mp_decode_free(struct mp_decode *decode);
 
 extern void mp_decode_clear_packets(struct mp_decode *decode);

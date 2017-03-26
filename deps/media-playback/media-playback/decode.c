@@ -41,17 +41,22 @@ static AVCodec *find_hardware_decoder(enum AVCodecID id)
 
 static int mp_open_codec(struct mp_decode *d)
 {
-	AVCodecContext *c = avcodec_alloc_context3(d->codec);
+	AVCodecContext *c;
+	int ret;
+
+#if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(57, 40, 101)
+	c = avcodec_alloc_context3(d->codec);
 	if (!c) {
 		blog(LOG_WARNING, "MP: Failed to allocate context");
 		return -1;
 	}
 
-	int ret = avcodec_parameters_to_context(c, d->stream->codecpar);
-	if (ret < 0) {
-		avcodec_close(c);
-		return ret;
-	}
+	ret = avcodec_parameters_to_context(c, d->stream->codecpar);
+	if (ret < 0)
+		goto fail;
+#else
+	c = d->stream->codec;
+#endif
 
 	if (c->thread_count == 1 &&
 	    c->codec_id != AV_CODEC_ID_PNG &&
@@ -63,16 +68,23 @@ static int mp_open_codec(struct mp_decode *d)
 
 	ret = avcodec_open2(c, d->codec, NULL);
 	if (ret < 0)
-		avcodec_close(c);
-	else
-		d->decoder = c;
+		goto fail;
 
+	d->decoder = c;
+	return ret;
+
+fail:
+	avcodec_close(c);
+#if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(57, 40, 101)
+	av_free(d->decoder);
+#endif
 	return ret;
 }
 
 bool mp_decode_init(mp_media_t *m, enum AVMediaType type, bool hw)
 {
 	struct mp_decode *d = type == AVMEDIA_TYPE_VIDEO ? &m->v : &m->a;
+	enum AVCodecID id;
 	AVStream *stream;
 	int ret;
 
@@ -85,8 +97,14 @@ bool mp_decode_init(mp_media_t *m, enum AVMediaType type, bool hw)
 		return false;
 	stream = d->stream = m->fmt->streams[ret];
 
+#if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(57, 40, 101)
+	id = stream->codecpar->codec_id;
+#else
+	id = stream->codec->codec_id;
+#endif
+
 	if (hw) {
-		d->codec = find_hardware_decoder(stream->codecpar->codec_id);
+		d->codec = find_hardware_decoder(id);
 		if (d->codec) {
 			ret = mp_open_codec(d);
 			if (ret < 0)
@@ -95,14 +113,13 @@ bool mp_decode_init(mp_media_t *m, enum AVMediaType type, bool hw)
 	}
 
 	if (!d->codec) {
-		if (stream->codecpar->codec_id == AV_CODEC_ID_VP8)
+		if (id == AV_CODEC_ID_VP8)
 			d->codec = avcodec_find_decoder_by_name("libvpx");
-		else if (stream->codecpar->codec_id == AV_CODEC_ID_VP9)
+		else if (id == AV_CODEC_ID_VP9)
 			d->codec = avcodec_find_decoder_by_name("libvpx-vp9");
 
 		if (!d->codec)
-			d->codec = avcodec_find_decoder(
-					stream->codecpar->codec_id);
+			d->codec = avcodec_find_decoder(id);
 		if (!d->codec) {
 			blog(LOG_WARNING, "MP: Failed to find %s codec",
 					av_get_media_type_string(type));
@@ -151,7 +168,9 @@ void mp_decode_free(struct mp_decode *d)
 
 	if (d->decoder) {
 		avcodec_close(d->decoder);
+#if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(57, 40, 101)
 		av_free(d->decoder);
+#endif
 	}
 
 	if (d->frame)

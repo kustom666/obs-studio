@@ -315,7 +315,7 @@ static void mp_media_next_video(mp_media_t *m, bool preload)
 
 	if (m->swscale) {
 		int ret = sws_scale(m->swscale,
-				f->data, f->linesize,
+				(const uint8_t *const *)f->data, f->linesize,
 				0, f->height,
 				m->scale_pic, m->scale_linesizes);
 		if (ret < 0)
