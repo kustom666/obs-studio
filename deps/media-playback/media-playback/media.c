@@ -22,6 +22,7 @@
 #include "media.h"
 #include "closest-format.h"
 
+#include <libavdevice/avdevice.h>
 #include <libavutil/imgutils.h>
 
 static int64_t base_sys_ts = 0;
