@@ -153,9 +153,6 @@ static inline int get_sws_colorspace(enum AVColorSpace cs)
 		return SWS_CS_SMPTE170M;
 	case AVCOL_SPC_SMPTE240M:
 		return SWS_CS_SMPTE240M;
-	case AVCOL_SPC_BT2020_NCL:
-	case AVCOL_SPC_BT2020_CL:
-		return SWS_CS_BT2020;
 	default:
 		break;
 	}
