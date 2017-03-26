@@ -301,12 +301,17 @@ static void mp_media_next_video(mp_media_t *m, bool preload)
 	enum video_range_type new_range;
 	AVFrame *f = d->frame;
 
-	if (!mp_media_can_play_frame(m, d))
-		return;
-	if (!preload)
+	if (!preload) {
+		if (!mp_media_can_play_frame(m, d))
+			return;
+
 		d->frame_ready = false;
-	if (!preload && !m->v_cb)
+
+		if (!m->v_cb)
+			return;
+	} else if (!d->frame_ready) {
 		return;
+	}
 
 	if (m->swscale) {
 		int ret = sws_scale(m->swscale,
@@ -544,7 +549,8 @@ static inline bool mp_media_init_internal(mp_media_t *m,
 	if (format_name && *format_name) {
 		format = av_find_input_format(format_name);
 		if (!format)
-			blog(LOG_INFO, "MP: Unable to find input format '%s'");
+			blog(LOG_INFO, "MP: Unable to find input format for "
+					"'%s'", path);
 	}
 
 	int ret = avformat_open_input(&m->fmt, path, format, NULL);
