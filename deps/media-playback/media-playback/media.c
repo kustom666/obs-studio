@@ -606,7 +606,14 @@ bool mp_media_init(mp_media_t *media,
 	if (path && *path)
 		media->is_network = !!strstr(path, "://");
 
-	avformat_network_init();
+	static bool initialized = false;
+	if (!initialized) {
+		av_register_all();
+		avdevice_register_all();
+		avcodec_register_all();
+		avformat_network_init();
+		initialized = true;
+	}
 
 	if (!base_sys_ts)
 		base_sys_ts = (int64_t)os_gettime_ns();
