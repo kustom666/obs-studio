@@ -10,8 +10,14 @@ set(enc-openh264_SOURCES
 
 add_library(enc-openh264 MODULE
 	${enc-openh264_SOURCES})
+
+if(WIN32)
+target_link_libraries(enc-openh264
+	libobs
+	welsenc)
+else()
 target_link_libraries(enc-openh264
 	libobs
 	openh264)
-
+endif()
 install_obs_plugin_with_data(enc-openh264 data)
